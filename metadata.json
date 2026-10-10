@@ -1,0 +1,6 @@
+{
+  "name": "ZATCA Scan & Report - KSA E-Invoice Manager",
+  "description": "Mobile-first scanner for KSA ZATCA Phase 1 & Phase 2 QR invoices with compliance verification, history tracking, and CSV export for management reporting.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
