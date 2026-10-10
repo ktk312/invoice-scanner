@@ -44,6 +44,7 @@ export const ManagerExportModal: React.FC<ManagerExportModalProps> = ({
   const [localSettings, setLocalSettings] = useState<ManagerSettings>(settings);
   const [showSettingsEdit, setShowSettingsEdit] = useState(false);
   const [exportFormat, setExportFormat] = useState<'stripped_manager' | 'full_audit'>('stripped_manager');
+  const [excelSafeTrn, setExcelSafeTrn] = useState(true);
   const [previewTab, setPreviewTab] = useState<'summary' | 'csv'>('summary');
   const [copiedStatus, setCopiedStatus] = useState<string | null>(null);
 
@@ -55,10 +56,10 @@ export const ManagerExportModal: React.FC<ManagerExportModalProps> = ({
   const phase2Count = invoices.filter((inv) => inv.complianceAudit.phase === 'phase_2').length;
 
   const { subject, bodyText, mailtoUrl } = generateManagerSummaryText(invoices, localSettings);
-  const csvRaw = generateInvoiceCsv(invoices, localSettings, exportFormat);
+  const csvRaw = generateInvoiceCsv(invoices, localSettings, exportFormat, excelSafeTrn);
 
   const handleDownloadCsv = () => {
-    downloadInvoiceCsv(invoices, localSettings, exportFormat);
+    downloadInvoiceCsv(invoices, localSettings, exportFormat, excelSafeTrn);
     setCopiedStatus('csv_downloaded');
     setTimeout(() => setCopiedStatus(null), 3000);
   };
@@ -309,6 +310,17 @@ export const ManagerExportModal: React.FC<ManagerExportModalProps> = ({
                 Includes all ZATCA Phase 2 hashes, category, notes, and verification statuses.
               </div>
             )}
+
+            {/* Excel TRN Precision Option */}
+            <label className="flex items-center gap-2 pt-1 text-[11px] text-slate-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={excelSafeTrn}
+                onChange={(e) => setExcelSafeTrn(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-900 text-emerald-600 focus:ring-0 accent-emerald-500"
+              />
+              <span>Format Seller TRN as text in Excel (prevents 15 digits turning into 3.0E+14)</span>
+            </label>
           </div>
 
           {/* Primary Quick Actions Grid */}

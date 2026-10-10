@@ -52,7 +52,8 @@ export interface InvoiceItem {
   id: string;
   // ZATCA Core Decoded Fields
   sellerName: string;
-  vatNumber: string;
+  sellerTrn: string; // 15-digit KSA Tax Registration Number (Tag 2)
+  vatNumber: string; // KSA VAT Number (Tag 2)
   timestamp: string; // ISO 8601
   totalWithVat: number;
   vatTotal: number;

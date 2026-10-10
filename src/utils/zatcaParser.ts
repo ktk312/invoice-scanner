@@ -54,6 +54,49 @@ export function base64ToBytes(base64: string): Uint8Array | null {
   }
 }
 
+/**
+ * Clean, isolate, and normalize Seller TRN / VAT Registration Number
+ * Handles:
+ * - Eastern Arabic numerals (٠-٩) converted to standard digits (0-9)
+ * - Strips invisible Unicode BiDi markers (\u200E, \u200F) that flip digits in RTL
+ * - Extracts 15-digit KSA Tax Registration Number (3xxxxxxxxxxxxx3)
+ * - Strips prefixes like "TRN:", "VAT:", "الرقم الضريبي:"
+ */
+export function normalizeZatcaTrn(raw: string | undefined | null): string {
+  if (!raw) return '';
+  // 1. Remove BiDi control characters, non-breaking spaces, null bytes
+  let clean = raw.replace(/[\u200E\u200F\u202A-\u202E\uFEFF\u0000]/g, '').trim();
+
+  // 2. Convert Eastern Arabic numerals (٠-٩) to Latin digits (0-9)
+  const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  for (let i = 0; i < 10; i++) {
+    clean = clean.split(arabicDigits[i]).join(String(i));
+  }
+
+  // 3. Search for official 15-digit KSA VAT number starting with 3 and ending with 3
+  const ksa15Match = clean.match(/3\d{13}3/);
+  if (ksa15Match) {
+    return ksa15Match[0];
+  }
+
+  // 4. If no exact match starting/ending with 3, check for any 15 continuous digits
+  const any15Match = clean.match(/\d{15}/);
+  if (any15Match) {
+    return any15Match[0];
+  }
+
+  // 5. If it has digits separated by hyphens or spaces (e.g. 300-056-1234-00003), strip non-digits
+  const digitsOnly = clean.replace(/\D/g, '');
+  if (digitsOnly.length === 15) {
+    return digitsOnly;
+  }
+  if (digitsOnly.length > 0) {
+    return digitsOnly;
+  }
+
+  return clean;
+}
+
 export interface ParsedTlvResult {
   isBase64Tlv: boolean;
   tags: ZatcaRawTags;
@@ -102,7 +145,7 @@ export function parseZatcaTLV(input: string): ParsedTlvResult {
           tags.tag1_sellerName = decoder.decode(valueBytes);
           break;
         case 2:
-          tags.tag2_vatNumber = decoder.decode(valueBytes);
+          tags.tag2_vatNumber = normalizeZatcaTrn(decoder.decode(valueBytes));
           break;
         case 3:
           tags.tag3_timestamp = decoder.decode(valueBytes);
@@ -456,8 +499,8 @@ export function buildInvoiceItem(
 
   return {
     id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    sellerName: parsed.tags.tag1_sellerName || 'Unknown Vendor',
-    vatNumber: parsed.tags.tag2_vatNumber || 'Unspecified VAT',
+    sellerName: parsed.tags.tag1_sellerName?.trim() || 'Unknown Vendor',
+    vatNumber: normalizeZatcaTrn(parsed.tags.tag2_vatNumber) || 'Unspecified TRN',
     timestamp: invoiceTimestamp,
     totalWithVat: total,
     vatTotal: vat,

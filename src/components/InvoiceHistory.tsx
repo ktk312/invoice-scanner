@@ -398,7 +398,11 @@ export const InvoiceHistory: React.FC<InvoiceHistoryProps> = ({
                       </h4>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+                      <span dir="ltr" className="font-mono tabular-nums text-slate-300 font-medium">
+                        TRN: {inv.vatNumber}
+                      </span>
+                      <span aria-hidden="true">·</span>
                       <span>{inv.category}</span>
                       <span aria-hidden="true">·</span>
                       <span>

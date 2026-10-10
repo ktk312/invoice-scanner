@@ -10,6 +10,7 @@
  */
 
 import { InvoiceItem, ManagerSettings } from '../types/invoice';
+import { normalizeZatcaTrn } from './zatcaParser';
 
 /**
  * Escape CSV fields according to RFC 4180
@@ -23,6 +24,18 @@ function escapeCsvCell(val: string | number | boolean | null | undefined): strin
   return `"${str}"`;
 }
 
+/**
+ * Format 15-digit Seller TRN for CSV
+ * When excelSafe is true: uses ="300056123400003" so Microsoft Excel displays full 15 digits as text instead of 3.0E+14
+ */
+export function formatTrnForCsv(trn: string | undefined | null, excelSafe = true): string {
+  const clean = normalizeZatcaTrn(trn) || trn?.trim() || '';
+  if (excelSafe && /^\d{10,}$/.test(clean)) {
+    return `="${clean}"`;
+  }
+  return escapeCsvCell(clean);
+}
+
 export type CsvExportFormat = 'stripped_manager' | 'full_audit';
 
 /**
@@ -32,7 +45,8 @@ export type CsvExportFormat = 'stripped_manager' | 'full_audit';
 export function generateInvoiceCsv(
   invoices: InvoiceItem[],
   settings?: Partial<ManagerSettings>,
-  format: CsvExportFormat = 'stripped_manager'
+  format: CsvExportFormat = 'stripped_manager',
+  excelSafeTrn = true
 ): string {
   const lines: string[] = [];
 
@@ -56,14 +70,14 @@ export function generateInvoiceCsv(
         : 'N/A';
 
       const row = [
-        inv.sellerName,
-        inv.vatNumber,
-        formattedDate,
-        inv.subtotal.toFixed(2),
-        inv.vatTotal.toFixed(2),
-        inv.totalWithVat.toFixed(2),
+        escapeCsvCell(inv.sellerName),
+        formatTrnForCsv(inv.vatNumber, excelSafeTrn),
+        escapeCsvCell(formattedDate),
+        escapeCsvCell(inv.subtotal.toFixed(2)),
+        escapeCsvCell(inv.vatTotal.toFixed(2)),
+        escapeCsvCell(inv.totalWithVat.toFixed(2)),
       ];
-      lines.push(row.map(escapeCsvCell).join(','));
+      lines.push(row.join(','));
     });
 
     // Summary total row at the bottom
@@ -72,14 +86,14 @@ export function generateInvoiceCsv(
     const totalSubtotal = invoices.reduce((sum, inv) => sum + inv.subtotal, 0);
 
     const summaryRow = [
-      'TOTAL',
-      '',
-      `${invoices.length} Invoices`,
-      totalSubtotal.toFixed(2),
-      totalVat.toFixed(2),
-      totalAmount.toFixed(2),
+      escapeCsvCell('TOTAL'),
+      escapeCsvCell(''),
+      escapeCsvCell(`${invoices.length} Invoices`),
+      escapeCsvCell(totalSubtotal.toFixed(2)),
+      escapeCsvCell(totalVat.toFixed(2)),
+      escapeCsvCell(totalAmount.toFixed(2)),
     ];
-    lines.push(summaryRow.map(escapeCsvCell).join(','));
+    lines.push(summaryRow.join(','));
 
     return lines.join('\r\n');
   }
@@ -136,9 +150,10 @@ export function downloadInvoiceCsv(
   invoices: InvoiceItem[],
   settings?: Partial<ManagerSettings>,
   format: CsvExportFormat = 'stripped_manager',
+  excelSafeTrn = true,
   customFilename?: string
 ): void {
-  const csvContent = generateInvoiceCsv(invoices, settings, format);
+  const csvContent = generateInvoiceCsv(invoices, settings, format, excelSafeTrn);
   // Add UTF-8 BOM: \uFEFF so Excel renders Arabic characters accurately
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

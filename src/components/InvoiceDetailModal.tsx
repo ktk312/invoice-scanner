@@ -25,6 +25,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { ExpenseCategory, InvoiceItem, SubmissionStatus } from '../types/invoice';
+import { normalizeZatcaTrn } from '../utils/zatcaParser';
 
 interface InvoiceDetailModalProps {
   invoice: InvoiceItem;
@@ -65,6 +66,8 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
   isNewScan = false,
 }) => {
   const [editedCategory, setEditedCategory] = useState<ExpenseCategory>(invoice.category);
+  const [editedSellerName, setEditedSellerName] = useState(invoice.sellerName);
+  const [editedVatNumber, setEditedVatNumber] = useState(invoice.vatNumber);
   const [editedNotes, setEditedNotes] = useState(invoice.notes || '');
   const [editedProject, setEditedProject] = useState(invoice.projectCode || '');
   const [editedStatus, setEditedStatus] = useState<SubmissionStatus>(invoice.submissionStatus);
@@ -83,8 +86,11 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
   };
 
   const handleSaveAndClose = () => {
+    const cleanTrn = normalizeZatcaTrn(editedVatNumber) || invoice.vatNumber;
     const updated: InvoiceItem = {
       ...invoice,
+      sellerName: editedSellerName.trim() || invoice.sellerName,
+      vatNumber: cleanTrn,
       category: editedCategory,
       notes: editedNotes,
       projectCode: editedProject,
@@ -190,14 +196,17 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
             {/* VAT Number & Timestamp Row */}
             <div className="pt-3 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-1.5">
-                <Hash className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-slate-400">VAT ID:</span>
-                <span className="font-mono text-slate-200 font-medium">{invoice.vatNumber}</span>
+              <div className="flex items-center gap-1.5" dir="ltr">
+                <Hash className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="text-slate-400 font-medium">Seller TRN:</span>
+                <span className="font-mono tabular-nums text-slate-200 font-semibold select-all">
+                  {editedVatNumber || invoice.vatNumber}
+                </span>
                 <button
-                  onClick={() => handleCopy(invoice.vatNumber, 'vat')}
+                  type="button"
+                  onClick={() => handleCopy(editedVatNumber || invoice.vatNumber, 'vat')}
                   className="p-1 hover:text-white text-slate-400 transition"
-                  title="Copy VAT ID"
+                  title="Copy Seller TRN"
                 >
                   {copiedKey === 'vat' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                 </button>
@@ -365,9 +374,50 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
           {/* Expense Report Categorization & Manager Notes Form */}
           <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800/80 space-y-4">
-            <div className="flex items-center gap-2">
-              <Tag className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-semibold text-slate-200">Expense Metadata for Manager</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-semibold text-slate-200">Invoice Data &amp; Expense Metadata</span>
+              </div>
+              <span className="text-[11px] text-slate-400">Editable if misread</span>
+            </div>
+
+            {/* Editable Supplier Name & Seller TRN */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                <label className="text-slate-400 block font-medium flex items-center gap-1">
+                  <Building className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Supplier / Vendor Name</span>
+                </label>
+                <input
+                  type="text"
+                  value={editedSellerName}
+                  onChange={(e) => setEditedSellerName(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 focus:outline-none focus:border-emerald-500 transition"
+                  placeholder="Vendor Name"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-400 block font-medium flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Hash className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Seller TRN (15 Digits)</span>
+                  </span>
+                  <span className={`text-[10px] font-mono ${editedVatNumber.length === 15 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {editedVatNumber.length}/15 digits
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  maxLength={15}
+                  value={editedVatNumber}
+                  onChange={(e) => setEditedVatNumber(normalizeZatcaTrn(e.target.value))}
+                  className="w-full h-10 px-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 font-mono focus:outline-none focus:border-emerald-500 transition"
+                  placeholder="300056123400003"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
